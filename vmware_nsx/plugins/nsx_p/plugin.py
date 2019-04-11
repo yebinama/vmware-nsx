@@ -1264,6 +1264,8 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
             port['device_owner'] in [const.DEVICE_OWNER_DHCP]):
             msg = (_('Can not delete DHCP port %s') % port_id)
             raise n_exc.BadRequest(resource='port', msg=msg)
+        if not force_delete_vpn:
+            self._assert_on_vpn_port_change(port)
 
         if self._is_backend_port(context, port_data):
             self._delete_port_on_backend(context, net_id, port_id)
@@ -1503,10 +1505,11 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
             router = self._get_router(context, router_id)
         snat_exist = router.enable_snat
         fw_exist = self._router_has_edge_fw_rules(context, router)
+        vpn_exist = self.service_router_has_vpnaas(context, router_id)
         lb_exist = False
-        if not (fw_exist or snat_exist):
+        if not (fw_exist or snat_exist or vpn_exist):
             lb_exist = self.service_router_has_loadbalancers(router_id)
-        return snat_exist or lb_exist or fw_exist
+        return snat_exist or lb_exist or fw_exist or vpn_exist
 
     def service_router_has_loadbalancers(self, router_id):
         tags_to_search = [{'scope': lb_const.LR_ROUTER_TYPE, 'tag': router_id}]
@@ -1517,6 +1520,15 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
         non_delete_services = [srv for srv in router_lb_services
                                if not srv.get('marked_for_delete')]
         return True if non_delete_services else False
+
+    def service_router_has_vpnaas(self, context, router_id):
+        """Return True if there is a vpn service attached to this router"""
+        vpn_plugin = directory.get_plugin(plugin_const.VPN)
+        if vpn_plugin:
+            filters = {'router_id': [router_id]}
+            if vpn_plugin.get_vpnservices(context.elevated(), filters=filters):
+                return True
+        return False
 
     def verify_sr_at_backend(self, router_id):
         """Check if the backend Tier1 has a service router or not"""
@@ -1640,13 +1652,16 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
             context, router)
         sr_currently_exists = self.verify_sr_at_backend(router_id)
         fw_exist = self._router_has_edge_fw_rules(context, router)
-        # In this case the following operation must be executed regardless
-        # of fw_exist and snat status
-        lb_exist = self.service_router_has_loadbalancers(router_id)
+        vpn_exist = self.service_router_has_vpnaas(context, router_id)
+        lb_exist = False
+        if not (fw_exist or vpn_exist):
+            # This is a backend call, so do it only if must
+            lb_exist = self.service_router_has_loadbalancers(router_id)
+        tier1_services_exist = fw_exist or vpn_exist or lb_exist
         actions = self._get_update_router_gw_actions(
             org_tier0_uuid, orgaddr, org_enable_snat,
             new_tier0_uuid, newaddr, new_enable_snat,
-            lb_exist, fw_exist, sr_currently_exists)
+            tier1_services_exist, sr_currently_exists)
 
         if actions['add_service_router']:
             self.create_service_router(context, router_id, router=router)
@@ -1824,8 +1839,16 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
         router_data = router['router']
         self._assert_on_router_admin_state(router_data)
 
+        vpn_driver = None
         if validators.is_attr_set(gw_info):
             self._validate_update_router_gw(context, router_id, gw_info)
+
+            # VPNaaS need to be notified on router GW changes (there is
+            # currently no matching upstream registration for this)
+            vpn_plugin = directory.get_plugin(plugin_const.VPN)
+            if vpn_plugin:
+                vpn_driver = vpn_plugin.drivers[vpn_plugin.default_provider]
+                vpn_driver.validate_router_gw_info(context, router_id, gw_info)
 
         routes_added = []
         routes_removed = []
@@ -1872,7 +1895,9 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
                     except Exception as e:
                         LOG.error("Rollback router %s changes failed to add "
                                   "static routes: %s", router_id, e)
-
+        if vpn_driver:
+            # Update vpn advertisement if GW was updated
+            vpn_driver.update_router_advertisement(context, router_id)
         return updated_router
 
     def _get_gateway_addr_from_subnet(self, subnet):
@@ -3014,3 +3039,29 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
         if len(port_tags) != orig_len:
             self.nsxpolicy.segment_port.update(
                 segment_id, port_id, tags=port_tags)
+
+    def get_extra_fw_rules(self, context, router_id, port_id):
+        """Return firewall rules that should be added to the router firewall
+
+        This method should return a list of allow firewall rules that are
+        required in order to enable different plugin features with north/south
+        traffic.
+        The returned rules will be added after the FWaaS rules, and before the
+        default drop rule.
+        Only rules relevant for port_id router interface port should be
+        returned, and the rules should be ingress/egress
+        (but not both) and include the source/dest nsx logical port.
+        """
+        extra_rules = []
+
+        # VPN rules:
+        vpn_plugin = directory.get_plugin(plugin_const.VPN)
+        if vpn_plugin:
+            vpn_driver = vpn_plugin.drivers[vpn_plugin.default_provider]
+            vpn_rules = (
+                vpn_driver._generate_ipsecvpn_firewall_rules(
+                    self.plugin_type(), context, router_id=router_id))
+            if vpn_rules:
+                extra_rules.extend(vpn_rules)
+
+        return extra_rules
