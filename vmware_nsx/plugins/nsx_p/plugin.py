@@ -842,9 +842,9 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
                 # need to disable slaac on router
                 profile_id = DEFAULT_NDRA_PROFILE_ID
 
-            if profile_id:
-                self.nsxpolicy.tier1.update(router_id,
-                                            ipv6_ndra_profile_id=profile_id)
+        if profile_id:
+            self.nsxpolicy.tier1.update(router_id,
+                                        ipv6_ndra_profile_id=profile_id)
 
     def create_subnet(self, context, subnet):
         return self._create_subnet(context, subnet)
