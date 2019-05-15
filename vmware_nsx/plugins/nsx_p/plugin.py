@@ -1640,6 +1640,9 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
                 router_name, router['id'],
                 tier0=None,
                 tags=tags)
+            # Also create the empty locale-service as it must always exist
+            self.nsxpolicy.tier1.create_locale_service(router['id'])
+
         #TODO(annak): narrow down the exception
         except Exception as ex:
             with excutils.save_and_reraise_exception():
@@ -1672,6 +1675,7 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
             context, router_id)
 
         try:
+            self.nsxpolicy.tier1.delete_locale_service(router_id)
             self.nsxpolicy.tier1.delete(router_id)
         except nsx_lib_exc.ResourceNotFound:
             # If the resource was not found on the backend do not worry about
