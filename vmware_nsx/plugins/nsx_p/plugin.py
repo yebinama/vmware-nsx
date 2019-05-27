@@ -1561,9 +1561,12 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
 
         if (actions['remove_router_link_port'] or
             actions['add_router_link_port']):
-            # GW was changed
-            self.nsxpolicy.tier1.update(router_id,
-                                        tier0=new_tier0_uuid)
+            # GW was changed. update GW and route advertisement
+            self.nsxpolicy.tier1.update_route_advertisement(
+                router_id,
+                nat=actions['advertise_route_nat_flag'],
+                subnets=actions['advertise_route_connected_flag'],
+                tier0=new_tier0_uuid)
 
             # Set/Unset the router TZ to allow vlan switches traffic
             if cfg.CONF.nsx_p.allow_passthrough:
@@ -1577,6 +1580,12 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
             else:
                 LOG.debug("Not adding transport-zone to tier1 router %s as "
                           "passthrough api is disabled", router_id)
+        else:
+            # Only update route advertisement
+            self.nsxpolicy.tier1.update_route_advertisement(
+                router_id,
+                nat=actions['advertise_route_nat_flag'],
+                subnets=actions['advertise_route_connected_flag'])
 
         if actions['add_snat_rules']:
             # Add SNAT rules for all the subnets which are in different scope
@@ -1590,11 +1599,6 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
         if actions['add_no_dnat_rules']:
             for subnet in router_subnets:
                 self._add_subnet_no_dnat_rule(context, router_id, subnet)
-
-        self.nsxpolicy.tier1.update_route_advertisement(
-            router_id,
-            nat=actions['advertise_route_nat_flag'],
-            subnets=actions['advertise_route_connected_flag'])
 
         # always advertise ipv6 subnets if gateway is set
         advertise_ipv6_subnets = True if info else False
