@@ -2690,7 +2690,8 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
                 source_groups=[source] if source else None,
                 dest_groups=[destination] if destination else None,
                 scope=scope,
-                direction=direction, logged=logging)
+                direction=direction, logged=logging,
+                tag=sg_rule.get('project_id'))
         else:
             # Just return the rule entry without creating it
             rule_entry = self.nsxpolicy.comm_map.build_entry(
@@ -2703,7 +2704,8 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
                 source_groups=[source] if source else None,
                 dest_groups=[destination] if destination else None,
                 scope=scope,
-                direction=direction, logged=logging)
+                direction=direction, logged=logging,
+                tag=sg_rule.get('project_id'))
             return rule_entry
 
     def create_security_group(self, context, security_group, default_sg=False):
