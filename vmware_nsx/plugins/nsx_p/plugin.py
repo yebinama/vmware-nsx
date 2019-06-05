@@ -1663,6 +1663,7 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
             # GW was changed. update GW and route advertisement
             self.nsxpolicy.tier1.update_route_advertisement(
                 router_id,
+                static_routes=not new_enable_snat,
                 nat=actions['advertise_route_nat_flag'],
                 subnets=actions['advertise_route_connected_flag'],
                 tier0=new_tier0_uuid)
@@ -1670,6 +1671,7 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
             # Only update route advertisement
             self.nsxpolicy.tier1.update_route_advertisement(
                 router_id,
+                static_routes=not new_enable_snat,
                 nat=actions['advertise_route_nat_flag'],
                 subnets=actions['advertise_route_connected_flag'])
 
