@@ -1382,6 +1382,9 @@ class NsxPTestL3NatTest(common_v3.FixExternalNetBaseTest,
             self.plugin_instance.__class__.__name__)
         self._plugin_class = self.plugin_instance.__class__
 
+        mock.patch.object(self.plugin.nsxpolicy, 'search_by_tags',
+                          return_value={'results': []}).start()
+
     def external_network(self, name='net1',
                          admin_state_up=True,
                          fmt=None, **kwargs):
