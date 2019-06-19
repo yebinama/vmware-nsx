@@ -1560,8 +1560,10 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
         router_subnets = self._find_router_subnets(
             context.elevated(), router_id)
         sr_currently_exists = self.verify_sr_at_backend(router_id)
-        lb_exist = False
         fw_exist = self._router_has_edge_fw_rules(context, router)
+        # In this case the following operation must be executed regardless
+        # of fw_exist and snat status
+        lb_exist = self.service_router_has_loadbalancers(router_id)
         actions = self._get_update_router_gw_actions(
             org_tier0_uuid, orgaddr, org_enable_snat,
             new_tier0_uuid, newaddr, new_enable_snat,
