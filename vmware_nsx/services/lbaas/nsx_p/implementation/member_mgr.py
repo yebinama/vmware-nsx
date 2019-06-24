@@ -69,8 +69,7 @@ class EdgeMemberManagerFromDict(base_mgr.NsxpLoadbalancerBaseManager):
                 context, self.core_plugin, member['subnet_id'])
             # Validate that there is no other LB on this router
             # as NSX does not allow it
-            if self.core_plugin.service_router_has_loadbalancers(
-                context.elevated(), router_id):
+            if self.core_plugin.service_router_has_loadbalancers(router_id):
                 completor(success=False)
                 msg = (_('Cannot attach a loadbalancer %(lb_id)s on router '
                          '%(router)s, as it already has a loadbalancer') %
