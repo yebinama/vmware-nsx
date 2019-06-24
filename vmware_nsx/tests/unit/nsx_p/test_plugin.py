@@ -36,6 +36,7 @@ from neutron_lib.api.definitions import portbindings
 from neutron_lib.api.definitions import provider_net as pnet
 from neutron_lib.api.definitions import vlantransparent as vlan_apidef
 from neutron_lib.callbacks import events
+from neutron_lib.callbacks import exceptions as nc_exc
 from neutron_lib.callbacks import registry
 from neutron_lib.callbacks import resources
 from neutron_lib import constants
@@ -2160,3 +2161,22 @@ class NsxPTestL3NatTestCase(NsxPTestL3NatTest,
                     self._update('floatingips', fip['floatingip'][
                         'id'], {'floatingip': {'port_id': port_id}},
                                 expected_code=exc.HTTPBadRequest.code)
+
+    def test_router_delete_with_lb_service(self):
+        with self.router() as router:
+            with mock.patch.object(
+                self.plugin.nsxpolicy, 'search_by_tags',
+                return_value={'results': [{'id': 'dummy'}]}):
+                self.assertRaises(nc_exc.CallbackFailure,
+                                  self.plugin_instance.delete_router,
+                                  context.get_admin_context(),
+                                  router['router']['id'])
+
+    def test_router_delete_with_no_lb_service(self):
+        with self.router() as router:
+            with mock.patch.object(
+                self.plugin.nsxpolicy, 'search_by_tags',
+                return_value={'results': []}):
+                self.plugin_instance.delete_router(
+                    context.get_admin_context(),
+                    router['router']['id'])
