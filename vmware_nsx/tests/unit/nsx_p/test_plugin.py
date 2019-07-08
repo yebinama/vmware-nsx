@@ -1547,7 +1547,7 @@ class NsxPTestL3NatTestCase(NsxPTestL3NatTest,
                     # Validate T1 was updated with default profile
                     t1_update.assert_called_with(
                         r['router']['id'],
-                        ipv6_ndra_profile_id='default')
+                        ipv6_ndra_profile_id='neutron-no-slaac-profile')
 
     def test_slaac_profile_dual_stack(self):
         with mock.patch("vmware_nsxlib.v3.policy.core_resources."
@@ -1587,7 +1587,7 @@ class NsxPTestL3NatTestCase(NsxPTestL3NatTest,
                     # Validate T1 was updated with default profile
                     t1_update.assert_called_with(
                         r['router']['id'],
-                        ipv6_ndra_profile_id='default')
+                        ipv6_ndra_profile_id='neutron-no-slaac-profile')
 
                     self._delete('subnets', s1['subnet']['id'])
                     self._delete('subnets', s2['subnet']['id'])
@@ -1643,7 +1643,7 @@ class NsxPTestL3NatTestCase(NsxPTestL3NatTest,
                     # Validate T1 was updated with default profile
                     t1_update.assert_called_with(
                         r['router']['id'],
-                        ipv6_ndra_profile_id='default')
+                        ipv6_ndra_profile_id='neutron-no-slaac-profile')
 
     def _test_router_add_dual_stack_subnets(self, s6_first=False):
         """Add dual stack subnets to router"""
