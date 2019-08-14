@@ -895,8 +895,9 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
             profile_id = SLAAC_NDRA_PROFILE_ID
 
         if delete:
-            rtr_subnets = self._find_router_subnets(context.elevated(),
-                                                    router_id)
+
+            rtr_subnets = self._load_router_subnet_cidrs_from_db(
+                context.elevated(), router_id)
             # check if there is another slaac overlay subnet that needs
             # advertising (vlan advertising is attached on interface level)
             slaac_subnets = [s for s in rtr_subnets
@@ -1618,7 +1619,7 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
         orgaddr, orgmask, _orgnexthop = (
             self._get_external_attachment_info(
                 context, router))
-        router_subnets = self._find_router_subnets(
+        router_subnets = self._load_router_subnet_cidrs_from_db(
             context.elevated(), router_id)
         self._validate_router_gw_and_tz(context, router_id, info,
                                         org_enable_snat, router_subnets)
@@ -1637,8 +1638,6 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
         new_enable_snat = router.enable_snat
         newaddr, newmask, _newnexthop = self._get_external_attachment_info(
             context, router)
-        router_subnets = self._find_router_subnets(
-            context.elevated(), router_id)
         sr_currently_exists = self.verify_sr_at_backend(router_id)
         fw_exist = self._router_has_edge_fw_rules(context, router)
         # In this case the following operation must be executed regardless
@@ -1916,7 +1915,8 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
             self._validate_interface_address_scope(context, router_db, info)
 
             # Check GW & subnets TZ
-            subnets = self._find_router_subnets(context.elevated(), router_id)
+            subnets = self._load_router_subnet_cidrs_from_db(
+                context.elevated(), router_id)
             tier0_uuid = self._get_tier0_uuid_by_router(
                 context.elevated(), router_db)
             #TODO(asarfaty): it is enough to validate only the new subnet,
@@ -2013,8 +2013,8 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
         overlay_net = self._is_overlay_network(context, network_id)
         segment_id = self._get_network_nsx_segment_id(context, network_id)
 
-        subnets = self._find_router_subnets(context.elevated(),
-                                            router_id)
+        subnets = self._load_router_subnet_cidrs_from_db(context.elevated(),
+                                                         router_id)
         try:
             if overlay_net:
                 # Remove the tier1 router from this segment on the NSX

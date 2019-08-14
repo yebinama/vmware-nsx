@@ -2170,7 +2170,7 @@ class NsxV3Plugin(nsx_plugin_common.NsxPluginV3Base,
             self._get_external_attachment_info(
                 context, router))
 
-        router_subnets = self._find_router_subnets(
+        router_subnets = self._load_router_subnet_cidrs_from_db(
             context.elevated(), router_id)
         self._validate_router_gw_and_tz(context, router_id, info,
                                         org_enable_snat, router_subnets)
@@ -2760,9 +2760,9 @@ class NsxV3Plugin(nsx_plugin_common.NsxPluginV3Base,
             resource_type = (None if overlay_net else
                              nsxlib_consts.LROUTERPORT_CENTRALIZED)
 
-            # Check GW & subnets TZ
-            subnets = self._find_router_subnets(context.elevated(),
-                                                router_id)
+            # If this is an ENS case - check GW & subnets
+            subnets = self._load_router_subnet_cidrs_from_db(
+                context.elevated(), router_id)
             tier0_uuid = self._get_tier0_uuid_by_router(context.elevated(),
                                                         router_db)
             self._validate_router_tz(context.elevated(), tier0_uuid, subnets)

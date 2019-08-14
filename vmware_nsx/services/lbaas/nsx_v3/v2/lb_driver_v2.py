@@ -156,7 +156,8 @@ class EdgeLoadbalancerDriverV2(base_mgr.LoadbalancerBaseManager):
 
         # Also check if there are any loadbalancers attached to this router
         # subnets
-        router_subnets = self.loadbalancer.core_plugin._find_router_subnets(
+        core_plugin = self.loadbalancer.core_plugin
+        router_subnets = core_plugin._load_router_subnet_cidrs_from_db(
             context.elevated(), router_id)
         subnet_ids = [subnet['id'] for subnet in router_subnets]
         if subnet_ids and self._get_lb_ports(context.elevated(), subnet_ids):
