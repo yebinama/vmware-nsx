@@ -90,7 +90,7 @@ from vmware_nsx.extensions import providersecuritygroup as provider_sg
 from vmware_nsx.extensions import secgroup_rule_local_ip_prefix as sg_prefix
 from vmware_nsx.plugins.common import plugin
 from vmware_nsx.services.qos.common import utils as qos_com_utils
-from vmware_nsx.services.vpnaas.nsxv3 import ipsec_utils
+from vmware_nsx.services.vpnaas.common_v3 import ipsec_utils
 
 from vmware_nsxlib.v3 import exceptions as nsx_lib_exc
 from vmware_nsxlib.v3 import nsx_constants as nsxlib_consts
@@ -1348,7 +1348,7 @@ class NsxPluginV3Base(agentschedulers_db.AZDhcpAgentSchedulerDbMixin,
         self,
         org_tier0_uuid, orgaddr, org_enable_snat,
         new_tier0_uuid, newaddr, new_enable_snat,
-        lb_exist, fw_exist, sr_currently_exists):
+        tier1_services_exist, sr_currently_exists):
         """Return a dictionary of flags indicating which actions should be
            performed on this router GW update.
         """
@@ -1419,22 +1419,22 @@ class NsxPluginV3Base(agentschedulers_db.AZDhcpAgentSchedulerDbMixin,
             # Should remove the service router if the GW was removed,
             # or no service needs it: SNAT, LBaaS or FWaaS
             actions['remove_service_router'] = (
-                not has_gw or not (fw_exist or lb_exist or new_with_snat))
+                not has_gw or not (tier1_services_exist or new_with_snat))
             if actions['remove_service_router']:
-                LOG.info("Removing service router [has GW: %s, FW %s, LB %s, "
+                LOG.info("Removing service router [has GW: %s, services %s, "
                          "SNAT %s]",
-                         has_gw, fw_exist, lb_exist, new_with_snat)
+                         has_gw, tier1_services_exist, new_with_snat)
         else:
             # currently there is no service router on the backend
             actions['remove_service_router'] = False
             # Should add service router if there is a GW
             # and there is a service that needs it: SNAT, LB or FWaaS
             actions['add_service_router'] = (
-                has_gw is not None and (new_with_snat or fw_exist or lb_exist))
+                has_gw is not None and (new_with_snat or tier1_services_exist))
             if actions['add_service_router']:
-                LOG.info("Adding service router [has GW: %s, FW %s, LB %s, "
+                LOG.info("Adding service router [has GW: %s, services %s, "
                          "SNAT %s]",
-                         has_gw, fw_exist, lb_exist, new_with_snat)
+                         has_gw, tier1_services_exist, new_with_snat)
 
         return actions
 
