@@ -136,6 +136,24 @@ class NsxPAvailabilityZone(v3_az.NsxV3AvailabilityZone):
             auto_config=True, is_mandatory=False,
             search_scope=search_scope)
 
+        # Init dhcp config from policy or MP
+        self.use_policy_dhcp = False
+        if (nsxpolicy.feature_supported(
+                nsx_constants.FEATURE_NSX_POLICY_DHCP)):
+            try:
+                self._policy_dhcp_server_config = self._init_default_resource(
+                    nsxpolicy, nsxpolicy.dhcp_server_config, 'dhcp_profile',
+                    auto_config=False, is_mandatory=False,
+                    search_scope=search_scope)
+                if self._policy_dhcp_server_config:
+                    self.use_policy_dhcp = True
+            except Exception:
+                # Not found. try as MP profile
+                pass
+        self._native_dhcp_profile_uuid = None
+        if not self.use_policy_dhcp and nsxlib:
+            self._translate_dhcp_profile(nsxlib, search_scope=search_scope)
+
         self.use_policy_md = False
         if (nsxpolicy.feature_supported(
                 nsx_constants.FEATURE_NSX_POLICY_MDPROXY)):
@@ -161,12 +179,6 @@ class NsxPAvailabilityZone(v3_az.NsxV3AvailabilityZone):
                     self._native_md_proxy_uuid)
             else:
                 self._native_md_proxy_uuid = None
-
-        # If passthrough api is supported, also initialize those NSX objects
-        if nsxlib:
-            self._translate_dhcp_profile(nsxlib, search_scope=search_scope)
-        else:
-            self._native_dhcp_profile_uuid = None
 
 
 class NsxPAvailabilityZones(common_az.ConfiguredAvailabilityZones):

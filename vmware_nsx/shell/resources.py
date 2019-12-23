@@ -259,6 +259,8 @@ nsxp_resources = {
     constants.NETWORKS: Resource(constants.NETWORKS,
                                  [Operations.LIST.value,
                                   Operations.NSX_UPDATE_STATE.value]),
+    constants.DHCP_BINDING: Resource(constants.DHCP_BINDING,
+                                 [Operations.MIGRATE_TO_POLICY.value]),
     constants.ROUTERS: Resource(constants.ROUTERS,
                                 [Operations.LIST.value]),
     constants.CERTIFICATE: Resource(constants.CERTIFICATE,
