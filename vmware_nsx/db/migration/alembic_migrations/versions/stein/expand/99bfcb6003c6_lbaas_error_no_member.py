@@ -30,9 +30,11 @@ down_revision = 'fc6308289aca'
 
 def upgrade():
     if (migration.schema_has_table('nsxv3_lbaas_loadbalancers') and
-        migration.schema_has_table('lbaas_loadbalancers')):
+        migration.schema_has_table('lbaas_loadbalancers') and
+        migration.schema_has_table('nsxv_lbaas_loadbalancer_bindings')):
         # Mark as ERROR loadbalancers without nsx mapping
         op.execute("UPDATE lbaas_loadbalancers "
                    "SET provisioning_status='ERROR' "
                    "WHERE id not in (SELECT loadbalancer_id FROM "
-                   "nsxv3_lbaas_loadbalancers)")
+                   "nsxv3_lbaas_loadbalancers) and id not in (SELECT "
+                   "loadbalancer_id FROM nsxv_lbaas_loadbalancer_bindings)")
