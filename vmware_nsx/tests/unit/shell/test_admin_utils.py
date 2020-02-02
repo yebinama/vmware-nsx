@@ -24,6 +24,7 @@ import six
 
 from neutron.common import config as neutron_config
 from neutron.db import servicetype_db  # noqa
+from neutron import quota
 from neutron.quota import resource_registry
 from neutron.tests import base
 from neutron_lib.callbacks import registry
@@ -33,6 +34,7 @@ from vmware_nsx._i18n import _
 from vmware_nsx.common import config  # noqa
 from vmware_nsx.db import nsxv_db
 from vmware_nsx.dvs import dvs_utils
+from vmware_nsx.shell.admin.plugins.nsxp.resources import utils as nsxp_utils
 from vmware_nsx.shell.admin.plugins.nsxv.resources import utils as nsxv_utils
 from vmware_nsx.shell.admin.plugins.nsxv3.resources import utils as nsxv3_utils
 from vmware_nsx.shell import resources
@@ -71,6 +73,12 @@ class AbstractTestAdminUtils(base.BaseTestCase):
         mock_query = mock.patch(
             "vmware_nsx.shell.admin.plugins.common.utils.query_yes_no")
         mock_query.start()
+
+    def _init_mock_quota(self):
+        make_res = mock.patch.object(quota.QuotaEngine, 'make_reservation')
+        self.mock_quota_make_res = make_res.start()
+        commit_res = mock.patch.object(quota.QuotaEngine, 'commit_reservation')
+        self.mock_quota_commit_res = commit_res.start()
 
     @abc.abstractmethod
     def _get_plugin_name(self):
@@ -148,6 +156,7 @@ class TestNsxvAdminUtils(AbstractTestAdminUtils,
 
         mock.patch("neutron_lib.plugins.directory.get_plugin",
                    side_effect=get_plugin_mock).start()
+        self._init_mock_quota()
 
         # Create a router to make sure we have deployed an edge
         self.router = self.create_router()
@@ -267,6 +276,8 @@ class TestNsxv3AdminUtils(AbstractTestAdminUtils,
         self.mock_nm_get_plugin = mock_nm_get_plugin.start()
         self.mock_nm_get_plugin.return_value = self._plugin
 
+        self._init_mock_quota()
+
     def _get_plugin_name(self):
         return 'nsxv3'
 
@@ -319,6 +330,10 @@ class TestNsxpAdminUtils(AbstractTestAdminUtils,
 
     def _get_plugin_name(self):
         return 'nsxp'
+
+    def _init_mock_plugin(self):
+        self._plugin = nsxp_utils.NsxPolicyPluginWrapper()
+        self._init_mock_quota()
 
     def test_nsxp_resources(self):
         self._test_resources(resources.nsxp_resources)

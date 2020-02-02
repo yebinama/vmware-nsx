@@ -27,6 +27,7 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
 
+from neutron import quota
 from neutron.tests import base
 from neutron.tests.unit.api.v2 import test_base
 from neutron.tests.unit import testlib_api
@@ -302,9 +303,15 @@ class SyncTestCase(testlib_api.SqlTestCase):
             "neutron_lib.plugins.directory.get_plugin")
         self.mock_nm_get_plugin = mock_nm_get_plugin.start()
         self.mock_nm_get_plugin.return_value = self._plugin
-
+        self._init_mock_quota()
         super(SyncTestCase, self).setUp()
         self.addCleanup(self.fc.reset_all)
+
+    def _init_mock_quota(self):
+        make_res = mock.patch.object(quota.QuotaEngine, 'make_reservation')
+        self.mock_quota_make_res = make_res.start()
+        commit_res = mock.patch.object(quota.QuotaEngine, 'commit_reservation')
+        self.mock_quota_commit_res = commit_res.start()
 
     @contextlib.contextmanager
     def _populate_data(self, ctx, net_size=2, port_size=2, router_size=2):
