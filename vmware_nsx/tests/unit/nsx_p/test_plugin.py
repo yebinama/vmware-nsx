@@ -2148,3 +2148,14 @@ class NsxPTestL3NatTestCase(NsxPTestL3NatTest,
                 self.plugin_instance.delete_router(
                     context.get_admin_context(),
                     router['router']['id'])
+
+    def test_router_interface_with_dhcp_subnet(self):
+        with self.router() as r,\
+            self.network() as net,\
+            self.subnet(cidr='20.0.0.0/24', network=net),\
+            self.subnet(cidr='30.0.0.0/24', network=net,
+                        enable_dhcp=False) as if_subnet:
+            self._router_interface_action(
+                'add', r['router']['id'],
+                if_subnet['subnet']['id'], None,
+                expected_code=exc.HTTPBadRequest.code)
