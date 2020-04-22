@@ -1214,8 +1214,22 @@ class NsxPolicyPlugin(nsx_plugin_common.NsxPluginV3Base):
                     LOG.error(msg)
                     raise n_exc.InvalidInput(error_message=msg)
 
+    def _init_ipv6_gateway(self, subnet):
+        # Override neutron decision to verify that also for ipv6 the first
+        # ip in the cidr is not used, as the NSX does not support xxxx::0 as a
+        # segment subnet gateway in versions supporting policy DHCP
+
+        if (self.nsxpolicy.feature_supported(
+                nsxlib_consts.FEATURE_NSX_POLICY_DHCP) and
+            subnet.get('gateway_ip') is const.ATTR_NOT_SPECIFIED and
+            subnet.get('ip_version') == const.IP_VERSION_6 and
+            subnet.get('cidr') and subnet['cidr'] != const.ATTR_NOT_SPECIFIED):
+            net = netaddr.IPNetwork(subnet['cidr'])
+            subnet['gateway_ip'] = str(net.network + 1)
+
     @nsx_plugin_common.api_replay_mode_wrapper
     def create_subnet(self, context, subnet):
+        self._init_ipv6_gateway(subnet['subnet'])
         if not self.use_policy_dhcp:
             # Subnet with MP DHCP
             return self._create_subnet_with_mp_dhcp(context, subnet)
