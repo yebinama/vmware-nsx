@@ -66,9 +66,21 @@ class LBaaSNSXObjectManagerWrapper(object):
 
         return completor_func
 
+    def _certificate_handler(self, obj_dict, args):
+        # Extract NLBaaSv2 certificate data into a dict which is readable by
+        # the listener_mgr
+        lbv2_cert = args.get('certificate')
+        if lbv2_cert:
+            cert = {'ref': obj_dict.get('default_tls_container_id'),
+                    'certificate': lbv2_cert.get_certificate(),
+                    'private_key': lbv2_cert.get_private_key(),
+                    'passphrase': lbv2_cert.get_private_key_passphrase()}
+            args['certificate'] = cert
+
     @log_helpers.log_method_call
     def create(self, context, obj, **args):
         obj_dict = self.translator(obj)
+        self._certificate_handler(obj_dict, args)
         completor_func = self.get_completor_func(context, obj)
         return self.implementor.create(context, obj_dict, completor_func,
                                        **args)
@@ -77,6 +89,7 @@ class LBaaSNSXObjectManagerWrapper(object):
     def update(self, context, old_obj, new_obj, **args):
         old_obj_dict = self.translator(old_obj)
         new_obj_dict = self.translator(new_obj)
+        self._certificate_handler(new_obj_dict, args)
         completor_func = self.get_completor_func(context, new_obj)
         return self.implementor.update(context, old_obj_dict, new_obj_dict,
                                        completor_func, **args)
