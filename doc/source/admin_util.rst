@@ -627,9 +627,12 @@ NSX Policy Plugin
 
     nsxadmin -r system -o set -p realization_interval=1
 
-
 - Migrate networks DHCP from MP to Policy (for NSX 3.0 upgrades)::
     nsxadmin -r dhcp-binding -o migrate-to-policy --property dhcp-config=<id>
+
+- Update tags on a loadbalancer service
+    nsxadmin -r lb-services -o nsx-update-tags
+
 
 Client Certificate
 ~~~~~~~~~~~~~~~~~~

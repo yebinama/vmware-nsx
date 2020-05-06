@@ -55,6 +55,7 @@ class Operations(enum.Enum):
     NSX_UPDATE_STATE = 'nsx-update-state'
     NSX_ENABLE_STANDBY_RELOCATION = 'nsx-enable-standby-relocation'
     NSX_UPDATE_IP = 'nsx-update-ip'
+    NSX_UPDATE_TAGS = 'nsx-update-tags'
     NSX_RECREATE = 'nsx-recreate'
     NSX_REDISTRIBURE = 'nsx-redistribute'
     NSX_REORDER = 'nsx-reorder'
@@ -263,6 +264,8 @@ nsxp_resources = {
                                  [Operations.MIGRATE_TO_POLICY.value]),
     constants.ROUTERS: Resource(constants.ROUTERS,
                                 [Operations.LIST.value]),
+    constants.LB_SERVICES: Resource(constants.LB_SERVICES,
+                                [Operations.NSX_UPDATE_TAGS.value]),
     constants.CERTIFICATE: Resource(constants.CERTIFICATE,
                                     [Operations.GENERATE.value,
                                      Operations.SHOW.value,
