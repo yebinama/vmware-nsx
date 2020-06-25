@@ -1480,6 +1480,9 @@ class NsxPTestL3NatTestCase(NsxPTestL3NatTest,
     def test_router_delete_dhcpv6_stateless_subnet_inuse_returns_409(self):
         self.skipTest('not supported')
 
+    def test_update_router_interface_port_ipv6_subnet_ext_ra(self):
+        self.skipTest('not supported')
+
     @common_v3.with_disable_dhcp
     @common_v3.with_external_network
     def test_router_update_gateway_upon_subnet_create_ipv6(self):
