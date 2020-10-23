@@ -53,8 +53,33 @@ dvs_opts = [
                       "NSX metadata code")),
 ]
 
+multi_dvs = cfg.ListOpt('enabled_dvs', default=[],
+                        help='Optional parameter for defining multiple '
+                               'vcenters to connect to. The configuration of'
+                               'each vcenter will be under a group names'
+                               '[dvs:<name>]')
+
 CONF = cfg.CONF
-CONF.register_opts(dvs_opts, 'dvs')
+CONF.register_opts([*dvs_opts, multi_dvs], 'dvs')
+
+
+def _register_dvs(conf, dvs, opts):
+    """
+    Register options for all declared vcenters
+
+    :param conf: plugin configuration
+    :param dvs: list of vcenters
+    :param opts: configuration options for each vcenter
+    """
+    for vcenter in dvs:
+        vcenter_group = f'dvs:{vcenter}'
+        conf.register_group(cfg.OptGroup(
+            name=vcenter_group,
+            title=f"Configuration for dvs {dvs}"))
+        conf.register_opts(opts, group=vcenter_group)
+
+
+_register_dvs(CONF, CONF.dvs.enabled_dvs, dvs_opts)
 
 
 # Create and register exceptions not in oslo.vmware
@@ -73,16 +98,30 @@ def dvs_is_enabled(dvs_id=None):
                 CONF.dvs.host_password and (dvs_id or CONF.dvs.dvs_name))
 
 
-def dvs_create_session():
-    return api.VMwareAPISession(CONF.dvs.host_ip,
-                                CONF.dvs.host_username,
-                                CONF.dvs.host_password,
-                                CONF.dvs.api_retry_count,
-                                CONF.dvs.task_poll_interval,
-                                port=CONF.dvs.host_port,
-                                cacert=CONF.dvs.ca_file,
-                                insecure=CONF.dvs.insecure)
+def dvs_create_session(vcenter=None):
+    """
+    Create session for vcenter
+    If no vcenter is specified, load default one
+
+    :param vcenter: vcenter name
+    """
+    conf = getattr(CONF, f"dvs{':' + vcenter if vcenter is not None else ''}")
+    return api.VMwareAPISession(conf.host_ip,
+                                conf.host_username,
+                                conf.host_password,
+                                conf.api_retry_count,
+                                conf.task_poll_interval,
+                                port=conf.host_port,
+                                cacert=conf.ca_file,
+                                insecure=conf.insecure)
 
 
 def dvs_name_get():
     return CONF.dvs.dvs_name
+
+
+def dvs_vcenters_get():
+    """
+    Return configuration name for all vcenters
+    """
+    return CONF.dvs.enabled_dvs or [None]

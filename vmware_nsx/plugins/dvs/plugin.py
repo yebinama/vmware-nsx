@@ -194,20 +194,11 @@ class NsxDvsV2(addr_pair_db.AllowedAddressPairsMixin,
             return '%s-%s' % (net_data['name'][:43], net_data['id'])
 
     def _add_port_group(self, dvs_id, net_data, vlan_tag, trunk_mode):
-        if validators.is_attr_set(net_data.get(pnet.PHYSICAL_NETWORK)):
-            dvs_name = net_data.get(pnet.PHYSICAL_NETWORK)
-            dvs_moref = self._dvs.dvs.get_dvs_moref_by_name(dvs_name)
-            self._dvs.dvs.add_port_group(dvs_moref, dvs_id, vlan_tag,
-                                         trunk_mode=trunk_mode)
-        else:
-            dvs_name = dvs_utils.dvs_name_get()
-            self._dvs.add_port_group(dvs_id, vlan_tag,
-                                     trunk_mode=trunk_mode)
+        dvs_name = net_data.get(pnet.PHYSICAL_NETWORK,
+                                dvs_utils.dvs_name_get())
+        self._dvs.add_port_group(dvs_id, dvs_name, vlan_tag,
+                                 trunk_mode=trunk_mode)
         return dvs_name
-
-    def _get_portgroup_info(self, net_id):
-        pg_info, dvpg_moref = self._dvs.dvs.get_port_group_info(None, net_id)
-        return pg_info, dvpg_moref
 
     def _dvs_create_network(self, context, network):
         net_data = network['network']
@@ -228,7 +219,7 @@ class NsxDvsV2(addr_pair_db.AllowedAddressPairsMixin,
         net_id = dvs_name = None
         if net_data.get(pnet.NETWORK_TYPE) == c_utils.NetworkTypes.PORTGROUP:
             net_id = net_data.get(pnet.PHYSICAL_NETWORK)
-            pg_info, dvpg_moref = self._get_portgroup_info(net_id)
+            pg_info, dvpg_moref = self._dvs.get_port_group_info(net_id)
             if pg_info.get('name') != net_data.get('name'):
                 err_msg = (_("Portgroup name %(dvpg)s must match network "
                             "name %(network)s") % {'dvpg': pg_info.get('name'),
@@ -269,7 +260,7 @@ class NsxDvsV2(addr_pair_db.AllowedAddressPairsMixin,
                 LOG.exception('Failed to create network')
                 if (net_data.get(pnet.NETWORK_TYPE) !=
                         c_utils.NetworkTypes.PORTGROUP):
-                    self._delete_port_group(dvs_id, dvs_name)
+                    self._dvs.delete_port_group(dvs_name, dvs_id)
 
         new_net[pnet.NETWORK_TYPE] = net_data.get(pnet.NETWORK_TYPE)
         new_net[pnet.PHYSICAL_NETWORK] = net_id or dvs_name
@@ -350,11 +341,7 @@ class NsxDvsV2(addr_pair_db.AllowedAddressPairsMixin,
         return self._dvs_create_network(context, network)
 
     def _delete_port_group(self, dvs_id, dvs_name):
-        if dvs_name == dvs_utils.dvs_name_get():
-            self._dvs.delete_port_group(dvs_id)
-        else:
-            dvs_moref = self._dvs.dvs.get_dvs_moref_by_name(dvs_name)
-            self._dvs.dvs.delete_port_group(dvs_moref, dvs_id)
+        self._dvs.delete_port_group(dvs_name, dvs_id)
 
     def _dvs_delete_network(self, context, id):
         network = self._get_network(context, id)
@@ -367,7 +354,7 @@ class NsxDvsV2(addr_pair_db.AllowedAddressPairsMixin,
             if (not bindings or
                 bindings[0].binding_type != c_utils.NetworkTypes.PORTGROUP):
                 dvs_name = bindings[0].phy_uuid
-                self._delete_port_group(dvs_id, dvs_name)
+                self._dvs.delete_port_group(dvs_name, dvs_id)
         except Exception:
             LOG.exception('Unable to delete DVS port group %s', id)
         self.handle_network_dhcp_access(context, id, action='delete_network')

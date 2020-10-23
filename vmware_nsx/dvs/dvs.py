@@ -38,40 +38,61 @@ class SingleDvsManager(object):
     the operations supported by the manager.
     """
     def __init__(self):
-        self.dvs = DvsManager()
-        self._dvs_moref = self._get_dvs_moref_by_name(
-            self.dvs.get_vc_session(),
-            dvs_utils.dvs_name_get())
+        self.dvs = [DvsManager(vcenter) for vcenter in
+                    dvs_utils.dvs_vcenters_get()]
+        self._cache = {}
 
-    def _get_dvs_moref_by_name(self, session, dvs_name):
-        """Get the moref of the configured DVS."""
-        return self.dvs.get_dvs_moref_by_name(dvs_name, session)
+    def _get_manager_moref_for_dvs(self, dvs_name):
+        """
+        Returns the moref associate to this dvs_name ane the manager which
+        manages it
 
-    def add_port_group(self, net_id, vlan_tag=None, trunk_mode=False):
-        return self.dvs.add_port_group(self._dvs_moref, net_id,
-                                       vlan_tag=vlan_tag,
-                                       trunk_mode=trunk_mode)
+        :param dvs_name:
+        """
+        if dvs_name not in self._cache:
+            for manager in self.dvs:
+                try:
+                    moref = manager.get_dvs_moref_by_name(dvs_name)
+                except nsx_exc.DvsNotFound:
+                    continue
+                else:
+                    self._cache[dvs_name] = (manager, moref)
+            else:
+                raise nsx_exc.DvsNotFound(dvs=dvs_name)
+        return self._cache[dvs_name]
 
-    def delete_port_group(self, net_id):
-        return self.dvs.delete_port_group(self._dvs_moref, net_id)
+    def add_port_group(self, net_id, dvs_name, vlan_tag=None, trunk_mode=False):
+        manager, moref = self._get_manager_moref_for_dvs(dvs_name)
+        return manager.add_port_group(moref, net_id, vlan_tag=vlan_tag,
+                                      trunk_mode=trunk_mode)
+
+    def delete_port_group(self, dvs_name, net_id):
+        manager, moref = self._get_manager_moref_for_dvs(dvs_name)
+        return manager.delete_port_group(moref, net_id)
 
     def get_port_group_info(self, net_id):
-        return self.dvs.get_port_group_info(self._dvs_moref, net_id)
-
-    def net_id_to_moref(self, net_id):
-        return self.dvs._net_id_to_moref(self._dvs_moref, net_id)
+        for manager in self.dvs:
+            try:
+                manager._get_portgroup(net_id)
+            except exceptions.NetworkNotFound:
+                continue
+            else:
+                return manager.get_port_group_info(None, net_id)
+        else:
+            raise exceptions.NetworkNotFound(net_id=net_id)
 
 
 class VCManagerBase(object):
     """Base class for all VC related classes, to initialize the session"""
-    def __init__(self):
+    def __init__(self, name=None):
         """Initializer.
 
         A global session with the VC will be established.
 
         NOTE: the DVS port group name will be the Neutron network UUID.
+        :param name: vcenter name
         """
-        self._session = dvs_utils.dvs_create_session()
+        self._session = dvs_utils.dvs_create_session(name)
 
     def get_vc_session(self):
         return self._session
@@ -83,10 +104,9 @@ class DvsManager(VCManagerBase):
     The dvs-id is not a class member, since multiple dvs-es can be supported.
     """
 
-    def get_dvs_moref_by_name(self, dvs_name, session=None):
+    def get_dvs_moref_by_name(self, dvs_name):
         """Get the moref of DVS."""
-        if not session:
-            session = self.get_vc_session()
+        session = self.get_vc_session()
         results = session.invoke_api(vim_util,
                                      'get_objects',
                                      session.vim,
