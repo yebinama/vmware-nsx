@@ -194,8 +194,9 @@ class NsxDvsV2(addr_pair_db.AllowedAddressPairsMixin,
             return '%s-%s' % (net_data['name'][:43], net_data['id'])
 
     def _add_port_group(self, dvs_id, net_data, vlan_tag, trunk_mode):
-        dvs_name = net_data.get(pnet.PHYSICAL_NETWORK,
-                                dvs_utils.dvs_name_get())
+        dvs_name = dvs_utils.dvs_name_get()
+        if validators.is_attr_set(net_data.get(pnet.PHYSICAL_NETWORK)):
+            dvs_name = net_data.get(pnet.PHYSICAL_NETWORK)
         self._dvs.add_port_group(dvs_id, dvs_name, vlan_tag,
                                  trunk_mode=trunk_mode)
         return dvs_name

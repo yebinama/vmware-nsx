@@ -57,6 +57,7 @@ class SingleDvsManager(object):
                     continue
                 else:
                     self._cache[dvs_name] = (manager, moref)
+                    break
             else:
                 raise nsx_exc.DvsNotFound(dvs=dvs_name)
         return self._cache[dvs_name]

@@ -55,12 +55,12 @@ dvs_opts = [
 
 multi_dvs = cfg.ListOpt('enabled_dvs', default=[],
                         help='Optional parameter for defining multiple '
-                               'vcenters to connect to. The configuration of'
-                               'each vcenter will be under a group names'
-                               '[dvs:<name>]')
+                             'vcenters to connect to. The configuration of'
+                             'each vcenter will be under a group names'
+                             '[dvs:<name>]')
 
 CONF = cfg.CONF
-CONF.register_opts([*dvs_opts, multi_dvs], 'dvs')
+CONF.register_opts(dvs_opts + [multi_dvs], 'dvs')
 
 
 def _register_dvs(conf, dvs, opts):
@@ -72,10 +72,10 @@ def _register_dvs(conf, dvs, opts):
     :param opts: configuration options for each vcenter
     """
     for vcenter in dvs:
-        vcenter_group = f'dvs:{vcenter}'
+        vcenter_group = 'dvs:{}'.format(vcenter)
         conf.register_group(cfg.OptGroup(
             name=vcenter_group,
-            title=f"Configuration for dvs {dvs}"))
+            title="Configuration for dvs {}".format(dvs)))
         conf.register_opts(opts, group=vcenter_group)
 
 
@@ -105,7 +105,8 @@ def dvs_create_session(vcenter=None):
 
     :param vcenter: vcenter name
     """
-    conf = getattr(CONF, f"dvs{':' + vcenter if vcenter is not None else ''}")
+    conf = getattr(CONF,
+                   "dvs{}".format(':' + vcenter if vcenter is not None else ''))
     return api.VMwareAPISession(conf.host_ip,
                                 conf.host_username,
                                 conf.host_password,
